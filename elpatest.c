@@ -5,9 +5,54 @@
 #include <unistd.h>
 #include <assert.h>
 #include <elpa/elpa.h>
-#include <cblas.h>
-#include <PBblacs.h>
-#include <src/helpers/scalapack_interfaces.h>
+
+#include "mkl.h"
+#include <mkl_scalapack.h>
+#include "mkl_lapacke.h"
+#include <mkl_cblas.h>
+
+#include <mkl_pblas.h>
+//#include <mkl_scalapack.h>
+#include <mkl_blacs.h>
+
+extern void   pdlawrite_();
+extern void   pdelset_();
+extern double pdlamch_();
+extern int    indxg2p_();
+extern int    indxg2l_();
+extern int    numroc_();
+extern void   descinit_();
+extern void   pdlaset_();
+extern double pdlange_();
+extern void   pdlacpy_();
+extern int    indxg2p_();
+
+extern void   pdgemr2d_();
+extern void   pdgemm_();
+extern void   pdsygvx_();
+extern void   pdgesv_();
+extern void   pdgesvd_();
+
+extern void   pzgemr2d_();
+extern void   pzgemm_();
+extern void   pzhegvx_();
+
+extern void   Cblacs_pinfo( int* mypnum, int* nprocs);
+extern void   Cblacs_get( int context, int request, int* value);
+extern int    Cblacs_gridinit( int* context, char * order, int np_row, int np_col);
+extern void   Cblacs_gridinfo( int context, int*  np_row, int* np_col, int*  my_row, int*  my_col);
+extern void   Cblacs_gridexit( int context);
+extern void   Cblacs_exit( int error_code);
+extern void   Cblacs_gridmap (int *ConTxt, int *usermap, int ldup, int nprow0, int npcol0);
+extern int    Csys2blacs_handle(MPI_Comm comm);
+extern void   Cfree_blacs_system_handle(int handle);
+#define max(x,y) (((x) > (y)) ? (x) : (y))
+#define min(x,y) (((x) > (y)) ? (y) : (x))
+
+
+// #include <cblas.h>
+// #include <PBblacs.h>
+//#include <src/helpers/scalapack_interfaces.h>
 extern void descinit_();
 extern int numroc_();
 int main(int argc, char** argv) {
@@ -113,7 +158,7 @@ int main(int argc, char** argv) {
     int na_rows = numroc_(&global_num_cols, &nblk, &my_prow, &ZERO, &dims[0]);
     int na_cols = numroc_(&global_num_cols, &nblk, &my_pcol, &ZERO, &dims[1]);
     printf("NA ROWS: %i\n", na_rows);
-    descinit_(&desc, &global_num_cols, &global_num_cols, &nblk, &nblk,&ZERO,&ZERO,&blacs_ctx, &req_nrow, &ierr);
+    descinit_(desc, &global_num_cols, &global_num_cols, &nblk, &nblk,&ZERO,&ZERO,&blacs_ctx, &req_nrow, &ierr);
     assert(ierr == 0);
     //assert(my_prow== coords[0]);
     //assert(my_pcol== coords[1]);

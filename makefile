@@ -1,16 +1,17 @@
 
 # MKLROOT = /opt/intel/compilers_and_libraries_2017.4.196/linux/mkl
 
+ELPA_INC = ${ELPA_ROOT}/include/elpa_openmp-2019.05.002
+
 FFLAGS = 
 
-#CPPFLAGS = -m64 -I${MKLROOT}/include -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_intelmpi_lp64 -lpthread -ldl -lrt -O3
-CPPFLAGS = -m64 -I${ELPA_ROOT}/include 
+CPPFLAGS = -m64 -I${MKLROOT}/include -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_intelmpi_lp64 -lpthread -ldl -lrt -O3
+CPPFLAGS += -I${ELPA_INC} -L${ELPA_ROOT}/lib -lm -lelpa_openmp -lrt -O3
 
--L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_intelmpi_lp64 -lpthread -ldl -lrt -O3
 
 FPPFLAGS = 
 
-OBJSC = dc_paral_eigsolver.o test.o
+OBJSC = elpatest.o
 
 override CC=mpicc
 
