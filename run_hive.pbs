@@ -5,11 +5,11 @@
 ##PBS -A GT-phanish6
 ##PBS -q inferno
 #PBS -q hive
-#PBS -N Al_scaling
+#PBS -N ELPA_test
 #PBS -o stdout
 #PBS -e stderr
 cd $PBS_O_WORKDIR
-
+module load elpa
 #module load anaconda3/4.2.0;source activate atm
 ulimit -s unlimited
 
