@@ -24,9 +24,9 @@ NP=256
 
 for N in 5000 10000 20000
 do
-    for r in {1..3}
+    for r in 1 2
     do
-        mpirun -np ${NP} ./test_elpa $N > log_N${N}_${r}.txt
+        mpirun -np ${NP} ./test_elpa $N > log_N${N}_np${np}_${r}.txt
     done
 done
 
