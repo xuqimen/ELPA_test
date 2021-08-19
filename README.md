@@ -1,7 +1,8 @@
 #### Usage
-- Load ELPA by `module load elpa'
+- Load ELPA by `module load elpa`
+- Load MKL by `module load mkl` (or `module load intel`)
 - Compile the code by `make clean; make`
-- run a test to solve an eigenvalue problem A*x = lambda*B*x of size `N x N` with `p` processes by
+- run a test to solve an eigenvalue problem A * x = lambda * B * x of size `N x N` with `p` processes by
 ```
 mpirun -np p ./test_elpa N
 ```
