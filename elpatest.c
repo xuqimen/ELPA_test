@@ -73,12 +73,12 @@ int main(int argc, char** argv) {
   volatile int gdbcheck = 0;
   char hostname[256];
   gethostname(hostname, sizeof(hostname));
-  printf("PID %d on %s ready for attach | %i\n", getpid(), hostname, rank);
+  if (rank == 0) printf("PID %d on %s ready for attach | %i\n", getpid(), hostname, rank);
   fflush(stdout);
     while (0 == gdbcheck)
       sleep(5);
   }
-  printf("sqrt: %i\n", sqrt_nprocs_for_eigensolve);
+  if (rank == 0) printf("sqrt: %i\n", sqrt_nprocs_for_eigensolve);
   if (rank  < (sqrt_nprocs_for_eigensolve * sqrt_nprocs_for_eigensolve) ) {
     printf("Inside here!\n");
 
@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
     periods[0] = sqrt_nprocs_for_eigensolve;
     periods[1] = sqrt_nprocs_for_eigensolve;
 
-    printf("Create comm\n");
+    if (rank == 0) printf("Create comm\n");
     MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, 0, &eigen_cart_comm);
     int cart_rank;
     int cart_size;
@@ -140,15 +140,15 @@ int main(int argc, char** argv) {
 
 
     Cblacs_pinfo(&cart_rank, &cart_size);
-    printf("A: %i,B: %i\n", cart_rank,cart_size);
+    if (rank == 0) printf("A: %i,B: %i\n", cart_rank,cart_size);
 
     int blacs_ctx;
     int nprow, npcol, my_prow, my_pcol;
     Cblacs_get(-1,0,&blacs_ctx);
-    printf("ctx: %i\n", blacs_ctx);
+    if (rank == 0) printf("ctx: %i\n", blacs_ctx);
     Cblacs_gridinit(&blacs_ctx, "Col", dims[0], dims[1]);
     Cblacs_gridinfo(blacs_ctx, &nprow, &npcol, &my_prow, &my_pcol);
-    printf("nprow : %i, npcol: %i, myprow: %i, mypcol: %i, dims: %i, %i\n",
+    if (rank == 0) printf("nprow : %i, npcol: %i, myprow: %i, mypcol: %i, dims: %i, %i\n",
         nprow,npcol,my_prow, my_pcol, dims[0], dims[1]);
     assert(nprow == dims[0]);
     assert(npcol == dims[1]);
@@ -157,7 +157,7 @@ int main(int argc, char** argv) {
     int ZERO=0;
     int na_rows = numroc_(&global_num_cols, &nblk, &my_prow, &ZERO, &dims[0]);
     int na_cols = numroc_(&global_num_cols, &nblk, &my_pcol, &ZERO, &dims[1]);
-    printf("NA ROWS: %i\n", na_rows);
+    if (rank == 0) printf("NA ROWS: %i\n", na_rows);
     descinit_(desc, &global_num_cols, &global_num_cols, &nblk, &nblk,&ZERO,&ZERO,&blacs_ctx, &req_nrow, &ierr);
     assert(ierr == 0);
     //assert(my_prow== coords[0]);
@@ -170,7 +170,7 @@ int main(int argc, char** argv) {
     const int local_ncols = req_ncol;
     const int process_row = coords[0];
     const int process_col = coords[1];
-    printf("na: %i, nev: %i, local_nrows: %i, local_ncols: %i, nblk: %i, process_row: %i, process_col: %i\n",
+    if (rank == 0) printf("na: %i, nev: %i, local_nrows: %i, local_ncols: %i, nblk: %i, process_row: %i, process_col: %i\n",
         na, nev, local_nrows, local_ncols, nblk, process_row,process_col);
 
     if (elpa_init(20171202) != ELPA_OK) {
@@ -193,7 +193,7 @@ int main(int argc, char** argv) {
 
     MPI_Comm_rank(mpi_comm_rows,&mpi_comm_rows_rank);
     MPI_Comm_size(mpi_comm_rows,&mpi_comm_rows_size);
-    printf("com rows: %i/%i\n", mpi_comm_rows_rank, mpi_comm_rows_size);
+    if (rank == 0) printf("com rows: %i/%i\n", mpi_comm_rows_rank, mpi_comm_rows_size);
 
     MPI_Comm mpi_comm_cols;
     ierr = MPI_Comm_split(MPI_COMM_WORLD, process_row, process_col, &mpi_comm_cols);
@@ -203,12 +203,12 @@ int main(int argc, char** argv) {
 
     MPI_Comm_rank(mpi_comm_cols,&mpi_comm_cols_rank);
     MPI_Comm_size(mpi_comm_cols,&mpi_comm_cols_size);
-    printf("com cols: %i/%i\n", mpi_comm_cols_rank, mpi_comm_cols_size);
+    if (rank == 0) printf("com cols: %i/%i\n", mpi_comm_cols_rank, mpi_comm_cols_size);
 
-    printf("Setting up some base stuff\n");
+    if (rank == 0) printf("Setting up some base stuff\n");
     elpa_set_integer(handle, "cannon_for_generalized", 0,&ierr);
     assert(ierr==ELPA_OK);
-    printf("SKIPPING CANNON\n");
+    if (rank == 0) printf("SKIPPING CANNON\n");
     elpa_set_integer(handle, "na", na,&ierr);
     assert(ierr==ELPA_OK);
     elpa_set_integer(handle, "nev", nev,&ierr);
@@ -229,7 +229,7 @@ int main(int argc, char** argv) {
     assert(ierr==ELPA_OK);
     //elpa_set_integer(handle, "process_col", process_col,&ierr);
     //assert(ierr==ELPA_OK);
-    printf("Running setup\n");
+    if (rank == 0) printf("Running setup\n");
     ierr = elpa_setup(handle);
     if (ierr != ELPA_OK) {
       printf("Unable to setup elpa \n");
@@ -254,27 +254,27 @@ int main(int argc, char** argv) {
     }
     int value;
     elpa_get_integer(handle, "solver", &value, &ierr);
-    printf("Solver is :%d\n", value);
+    if (rank == 0) printf("Solver is :%d\n", value);
 
     elpa_get_integer(handle, "num_processes", &value, &ierr);
-    printf("NP is :%d\n", value);
+    if (rank == 0) printf("NP is :%d\n", value);
 
     elpa_get_integer(handle, "process_id", &value, &ierr);
-    printf("procid is :%d\n", value);
+    if (rank == 0) printf("procid is :%d\n", value);
 
     elpa_get_integer(handle, "mpi_comm_cols", &value, &ierr);
-    printf("mpi_comm_cols is :%d\n", value);
+    if (rank == 0) printf("mpi_comm_cols is :%d\n", value);
 
     elpa_get_integer(handle, "mpi_comm_rows", &value, &ierr);
-    printf("mpi_comm_rows is :%d\n", value);
+    if (rank == 0) printf("mpi_comm_rows is :%d\n", value);
 
     elpa_get_integer(handle, "process_col", &value, &ierr);
-    printf("process_col is :%d\n", value);
+    if (rank == 0) printf("process_col is :%d\n", value);
 
     elpa_get_integer(handle, "process_row", &value, &ierr);
-    printf("process_row is :%d\n", value);
+    if (rank == 0) printf("process_row is :%d\n", value);
 
-
+/*
     for(int k = 0; k < 4; k++) {
       if(cart_rank == k) {
         printf("Rank %i: \n", k);
@@ -296,19 +296,23 @@ int main(int argc, char** argv) {
       }
       MPI_Barrier(MPI_COMM_WORLD);
     }
-
+*/
     double* eigenvectors = malloc(global_num_cols * global_num_cols * sizeof(double));
     double* eigvals = calloc(global_num_cols,sizeof(double));
-    printf("Starting to run\n");
+    if (rank == 0) printf("Starting to run\n");
     //sleep(rank);
+    double t1, t2;
+    t1 = MPI_Wtime();
     elpa_generalized_eigenvectors_d(handle, local_H_s, local_M_s, eigvals, eigenvectors, 0, &ierr);
+    t2 = MPI_Wtime();
+    if (rank == 0) printf("Time for ELPA generalized eigensolver: %.3f ms\n", (t2-t1)*1e3);
     //elpa_eigenvectors_d(handle, local_M_s, eigvals, eigenvectors, &ierr);
-    printf("After Run\n");
+    if (rank == 0) printf("After Run\n");
     if (ierr != ELPA_OK) {
       printf("Unable to solve \n");
       exit(-1);
     }
-
+/*
     for(int k = 0; k < 4; k++) {
       if(cart_rank == k) {
         for(int i = 0; i < global_num_cols; i++) {
@@ -324,6 +328,7 @@ int main(int argc, char** argv) {
       }
       MPI_Barrier(MPI_COMM_WORLD);
     }
+*/
 
   }
   else {
