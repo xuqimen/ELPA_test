@@ -78,16 +78,13 @@ int main(int argc, char** argv) {
 			while (0 == gdbcheck) sleep(5);
 	}
 
+
 	if (rank == 0) printf("sqrt(nproc): %i\n", sqrt_nprocs_for_eigensolve);
 	if (rank  < (sqrt_nprocs_for_eigensolve * sqrt_nprocs_for_eigensolve) ) {
-		//printf("Inside here!\n");
-
 		int dims[2];
 		dims[0] = sqrt_nprocs_for_eigensolve;
 		dims[1] = sqrt_nprocs_for_eigensolve;
 		int periods[2];
-		// periods[0] = sqrt_nprocs_for_eigensolve;
-		// periods[1] = sqrt_nprocs_for_eigensolve;
 		periods[0] = periods[1] = 1;
 
 		if (rank == 0) printf("Create comm\n");
@@ -101,7 +98,6 @@ int main(int argc, char** argv) {
 		int coords[2];
 		MPI_Cart_coords(eigen_cart_comm, cart_rank, 2, coords);
 
-
 		Cblacs_pinfo(&cart_rank, &cart_size);
 		if (rank == 0) printf("cart_rank: %i,cart_size: %i\n", cart_rank,cart_size);
 
@@ -109,7 +105,7 @@ int main(int argc, char** argv) {
 		int nprow, npcol, my_prow, my_pcol;
 		Cblacs_get(-1,0,&blacs_ctx);
 		if (rank == 0) printf("ctx: %i\n", blacs_ctx);
-		Cblacs_gridinit(&blacs_ctx, "Col", dims[0], dims[1]);
+		Cblacs_gridinit(&blacs_ctx, "Row", dims[0], dims[1]);
 		Cblacs_gridinfo(blacs_ctx, &nprow, &npcol, &my_prow, &my_pcol);
 		if (rank == 0) printf("nprow : %i, npcol: %i, myprow: %i, mypcol: %i, dims: %i, %i\n",
 				nprow,npcol,my_prow, my_pcol, dims[0], dims[1]);
@@ -147,27 +143,26 @@ int main(int argc, char** argv) {
 		int req_nrow = numroc_(&global_num_cols, &nblk, &my_prow, &ZERO, &dims[0]);
 		int req_ncol = numroc_(&global_num_cols, &nblk, &my_pcol, &ZERO, &dims[1]);
 
-		double* local_H_s = calloc(req_nrow * req_ncol,sizeof(double));
-		double* local_M_s = calloc(req_nrow * req_ncol,sizeof(double));
-		double* local_Z_s = calloc(req_nrow * req_ncol,sizeof(double));
+		double* local_H_s = calloc(max(req_nrow * req_ncol,1),sizeof(double));
+		double* local_M_s = calloc(max(req_nrow * req_ncol,1),sizeof(double));
+		double* local_Z_s = calloc(max(req_nrow * req_ncol,1),sizeof(double));
 		assert(local_H_s != NULL && local_M_s != NULL && local_Z_s != NULL);
 
 		srand(rank+1);
-		//if(coords[0] == coords[1]) {
+		// if(coords[0] == coords[1]) {
 			for(int j = 0; j < req_ncol; j++) {
 				for(int i = 0; i < req_nrow; i++) {
 					local_H_s[j*req_nrow + i] = ((double)rand())/RAND_MAX;
 					local_Z_s[j*req_nrow + i] = ((double)rand())/RAND_MAX;
 				}
 			}
-		//}
-		//
+		// }
 
 		// for(int k = 0; k < cart_size; k++) {
-		// 	if(cart_rank == k) {
-		// 		printf("rank = %d = (%d,%d), original rand H = \n", rank,my_prow,my_pcol);
-		// 		for(int i = 0; i < req_nrow; i++) {
-		// 			for(int j = 0; j < req_ncol; j++) {
+		// 	if(cart_rank == k && k == 0) {
+		// 		printf("rank = %d = (%d,%d), original rand A = \n", rank,my_prow,my_pcol);
+		// 		for(int i = 0; i < min(req_nrow,10); i++) {
+		// 			for(int j = 0; j < min(req_ncol,10); j++) {
 		// 				printf("%f ", local_H_s[j * req_nrow + i]);
 		// 			}
 		// 			printf("\n");
@@ -175,7 +170,6 @@ int main(int argc, char** argv) {
 		// 	}
 		// 	MPI_Barrier(MPI_COMM_WORLD);
 		// }
-		// MPI_Barrier(MPI_COMM_WORLD);
 		// MPI_Barrier(MPI_COMM_WORLD);
 
 		// if (req_nrow != req_ncol)
@@ -207,34 +201,31 @@ int main(int argc, char** argv) {
 				local_Z_s, &ONE, &ONE, descZ, &beta, local_H_s, &ONE, &ONE, descH);
 
 		// for(int k = 0; k < cart_size; k++) {
-		// 	if(cart_rank == k) {
+		// 	if(cart_rank == k && k == 0) {
 		// 		printf("rank = %d = (%d,%d), H = \n", rank,my_prow,my_pcol);
-		// 		for(int i = 0; i < req_nrow; i++) {
-		// 			for(int j = 0; j < req_ncol; j++) {
-		// 				printf("%f ", local_H_s[i * req_ncol + j]);
+		// 		for(int i = 0; i < min(req_nrow,10); i++) {
+		// 			for(int j = 0; j < min(req_ncol,10); j++) {
+		// 				printf("%f ", local_H_s[j * req_nrow + i]);
 		// 			}
 		// 			printf("\n");
 		// 		}
 		// 	}
 		// 	MPI_Barrier(MPI_COMM_WORLD);
 		// }
-
 		// MPI_Barrier(MPI_COMM_WORLD);
 
 		// for(int k = 0; k < cart_size; k++) {
-		// 	if(cart_rank == k) {
+		// 	if(cart_rank == k && k == 0) {
 		// 		printf("rank = %d = (%d,%d), M = \n", rank,my_prow,my_pcol);
-		// 		for(int i = 0; i < req_nrow; i++) {
-		// 			for(int j = 0; j < req_ncol; j++) {
-		// 				printf("%f ", local_M_s[i * req_ncol + j]);
+		// 		for(int i = 0; i < min(req_nrow,10); i++) {
+		// 			for(int j = 0; j < min(req_ncol,10); j++) {
+		// 				printf("%f ", local_M_s[j * req_nrow + i]);
 		// 			}
 		// 			printf("\n");
 		// 		}
 		// 	}
 		// 	MPI_Barrier(MPI_COMM_WORLD);
 		// }
-		// MPI_Barrier(MPI_COMM_WORLD);
-		// MPI_Barrier(MPI_COMM_WORLD);
 		// MPI_Barrier(MPI_COMM_WORLD);
 
 
@@ -353,31 +344,8 @@ int main(int argc, char** argv) {
 		elpa_get_integer(handle, "process_row", &value, &ierr);
 		if (rank == 0) printf("process_row is :%d\n", value);
 
-/*
-		for(int k = 0; k < 4; k++) {
-			if(cart_rank == k) {
-				printf("Rank %i: \n", k);
-
-				printf("H\n");
-				for(int i = 0; i < local_nrows; i++) {
-					for(int j = 0; j < local_ncols; j++) {
-						printf("%f ", local_H_s[j*local_nrows + i]);
-					}
-					printf("\n");
-				}
-				printf("M\n");
-				for(int i = 0; i < local_nrows; i++) {
-					for(int j = 0; j < local_ncols; j++) {
-						printf("%f ", local_M_s[j*local_nrows + i]);
-					}
-					printf("\n");
-				}
-			}
-			MPI_Barrier(MPI_COMM_WORLD);
-		}
-*/
 		// double* eigenvectors = malloc(global_num_cols * global_num_cols * sizeof(double));
-		double* eigenvectors = malloc(req_nrow * req_ncol * sizeof(double));
+		double* eigenvectors = malloc(max(req_nrow * req_ncol,1) * sizeof(double));
 		double* eigvals = calloc(global_num_cols,sizeof(double));
 		if (rank == 0) printf("Starting to run\n");
 		//sleep(rank);
@@ -394,16 +362,10 @@ int main(int argc, char** argv) {
 		}
 
 		// for(int k = 0; k < 4; k++) {
-		// 	if(cart_rank == k) {
-		// 		for(int i = 0; i < global_num_cols; i++) {
+		// 	if(cart_rank == k && k == 0) {
+		// 		for(int i = 0; i < min(global_num_cols,10); i++) {
 		// 			printf(" (%i): %i: %.15f\n",cart_rank, i, eigvals[i]);
 		// 		}
-		// 		// for(int i = 0; i < local_ncols; i++) {
-		// 		// 	for(int j = 0; j < local_ncols; j++) {
-		// 		// 		printf("%f ", eigenvectors[i * local_ncols + j]);
-		// 		// 	}
-		// 		// 	printf("\n");
-		// 		// }
 		// 	}
 		// 	MPI_Barrier(MPI_COMM_WORLD);
 		// }
@@ -437,6 +399,101 @@ int main(int argc, char** argv) {
 }
 
 
+void elpa_generalized_solver(
+	double *a, int desca[9], double *b, int descb[9],
+	int nev, double *ev, double *z, MPI_Comm comm)
+{
+	int ictxt = desca[1];
+	int nprow, npcol, my_prow, my_pcol;
+	Cblacs_gridinfo(ictxt, &nprow, &npcol, &my_prow, &my_pcol);
+	int na = desca[2];
+	int nblk = desca[4];
+	int ZERO = 0;
+	int na_rows = numroc_(&na, &nblk, &my_prow, &ZERO, &nprow);
+	int na_cols = numroc_(&na, &nblk, &my_pcol, &ZERO, &npcol);
+
+	elpa_t handle;
+	int ierr;
+
+	if (elpa_init(20171202) != ELPA_OK) {
+		printf("Invalid elpa version\n");
+		exit(1);
+	}
+
+	handle = elpa_allocate(&ierr);
+	if (ierr != ELPA_OK) {
+		printf("Unable to handle elpa alloc\n");
+		exit(-1);
+	}
+
+	// MPI_Comm mpi_comm_rows;
+	// ierr = MPI_Comm_split(comm, process_col, process_row, &mpi_comm_rows);
+	// assert(ierr==0);
+	// int mpi_comm_rows_size;
+	// int mpi_comm_rows_rank;
+	// MPI_Comm_rank(mpi_comm_rows,&mpi_comm_rows_rank);
+	// MPI_Comm_size(mpi_comm_rows,&mpi_comm_rows_size);
+
+	// MPI_Comm mpi_comm_cols;
+	// ierr = MPI_Comm_split(comm, process_row, process_col, &mpi_comm_cols);
+	// assert(ierr==0);
+	// int mpi_comm_cols_size;
+	// int mpi_comm_cols_rank;
+	// MPI_Comm_rank(mpi_comm_cols,&mpi_comm_cols_rank);
+	// MPI_Comm_size(mpi_comm_cols,&mpi_comm_cols_size);
+	
+	elpa_set_integer(handle, "cannon_for_generalized", 0,&ierr);
+	assert(ierr==ELPA_OK);
+	elpa_set_integer(handle, "na", na,&ierr);
+	assert(ierr==ELPA_OK);
+	elpa_set_integer(handle, "nev", nev,&ierr);
+	assert(ierr==ELPA_OK);
+	elpa_set_integer(handle, "local_nrows", na_rows,&ierr);
+	assert(ierr==ELPA_OK);
+	elpa_set_integer(handle, "local_ncols", na_cols,&ierr);
+	assert(ierr==ELPA_OK);
+	elpa_set_integer(handle, "nblk", nblk,&ierr);
+	assert(ierr==ELPA_OK);
+	elpa_set_integer(handle, "mpi_comm_parent", (int)(MPI_Comm_c2f(MPI_COMM_WORLD)),&ierr);
+	assert(ierr==ELPA_OK);
+	// elpa_set_integer(handle, "mpi_comm_rows", (int)(MPI_Comm_c2f(mpi_comm_rows)),&ierr);
+	// assert(ierr==ELPA_OK);
+	// elpa_set_integer(handle, "mpi_comm_cols", (int)(MPI_Comm_c2f(mpi_comm_cols)),&ierr);
+	// assert(ierr==ELPA_OK);
+	elpa_set(handle, "process_row", my_prow, &ierr);                             // row coordinate of MPI process
+	elpa_set(handle, "process_col", my_pcol, &ierr);                             // column coordinate of MPI process
+
+	elpa_set_integer(handle, "blacs_context", (int) ictxt,&ierr);
+	assert(ierr==ELPA_OK);
+	//elpa_set_integer(handle, "process_col", process_col,&ierr);
+	//assert(ierr==ELPA_OK);
+
+	ierr = elpa_setup(handle);
+
+	elpa_set_integer(handle, "solver", ELPA_SOLVER_2STAGE, &ierr);
+	//elpa_set(handle, "real_kernel", ELPA_1STAGE_REAL_AVX_BLOCK2, &ierr);
+	elpa_set_integer(handle, "debug", 1, &ierr);
+
+	int value;
+	elpa_get_integer(handle, "solver", &value, &ierr);
+	elpa_get_integer(handle, "num_processes", &value, &ierr);
+	elpa_get_integer(handle, "process_id", &value, &ierr);
+	// elpa_get_integer(handle, "mpi_comm_cols", &value, &ierr);
+	// if (rank == 0) printf("mpi_comm_cols is :%d\n", value);
+	// elpa_get_integer(handle, "mpi_comm_rows", &value, &ierr);
+	// if (rank == 0) printf("mpi_comm_rows is :%d\n", value);
+	elpa_get_integer(handle, "process_col", &value, &ierr);
+	elpa_get_integer(handle, "process_row", &value, &ierr);
+
+	elpa_generalized_eigenvectors_d(handle, a, b, ev, z, 0, &ierr);
+	if (ierr != ELPA_OK) {
+		printf("Unable to solve \n");
+		exit(-1);
+	}
+
+	elpa_deallocate(handle,&ierr);
+	elpa_uninit(&ierr);
+}
 
 
 void elpa_std_solver(
