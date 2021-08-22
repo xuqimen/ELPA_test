@@ -1,0 +1,52 @@
+#!/bin/bash
+#PBS -l nodes=27:ppn=24
+#PBS -l pmem=7GB
+#PBS -l walltime=1:00:00
+##PBS -A GT-phanish6
+##PBS -q inferno
+#PBS -q hive
+#PBS -N ELPA_scaling
+#PBS -o stdout
+#PBS -e stderr
+cd $PBS_O_WORKDIR
+module load elpa
+#module load anaconda3/4.2.0;source activate atm
+ulimit -s unlimited
+
+export MV2_ENABLE_AFFINITY=1
+export MV2_CPU_BINDING_POLICY=bunch
+#export MALLOC_MMAP_MAX_=0 
+#export M_TRIM_THRESHOLD_=-1
+
+#mpirun -np $PBS_NP ../../../../../lib/sparc -name sprc-calc > sprc-calc.log
+
+# find largest square number of processes
+NP=`python3 -c "import math; n=math.sqrt(${PBS_NP}); n=math.floor(n); print(n*n)"`
+
+for N in 5000 10000 20000
+do
+    for r in 1 2
+    do
+        mpirun -np ${NP} ../test_elpa $N > log_N${N}_np${NP}_${r}.txt
+    done
+done
+
+
+#./run_task_1.sh $PBS_NP
+
+#./runtest.sh
+
+# nproc=625
+# 
+# #for i in `seq -f "%.0f" 50 10 100`
+# for np in ${nproc}
+# do
+#     echo ${np}
+#     mpirun -np ${np} ../../../../lib/sparc -name sprc-calc > sprc-calc-${np}.log
+#     mv sprc-calc.out sprc-calc-${np}.out
+#     mv sprc-calc.static sprc-calc-${np}.static
+#     # mv sprc-calc.aimd sprc-calc-${np}.aimd
+# done
+
+
+
