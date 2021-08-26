@@ -50,6 +50,13 @@ extern void   Cfree_blacs_system_handle(int handle);
 #define min(x,y) (((x) > (y)) ? (y) : (x))
 
 
+void elpa_generalized_solver(
+	double *a, int desca[9], double *b, int descb[9],
+	int nev, double *ev, double *z, MPI_Comm comm);
+
+void elpa_std_solver(
+	double *a, int desca[9], int nev, double *ev, double *z, MPI_Comm comm);
+
 // #include <cblas.h>
 // #include <PBblacs.h>
 //#include <src/helpers/scalapack_interfaces.h>
@@ -58,6 +65,11 @@ extern int numroc_();
 int main(int argc, char** argv) {
 	MPI_Init(&argc, &argv);
 	int n = atoi(argv[1]);
+	int type = 1;
+	if (argc == 3) {
+		type = atoi(argv[2]); // read type: 0 - standard, 1 - generalized
+ 	}
+
 	int rank,size;
 	MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 	MPI_Comm_size(MPI_COMM_WORLD,&size);
@@ -113,8 +125,8 @@ int main(int argc, char** argv) {
 		assert(npcol == dims[1]);
 		
 		//int nblk = ceil((double)global_num_cols/sqrt_nprocs_for_eigensolve-1e12);
-		int nblk = (global_num_cols - 1) / sqrt_nprocs_for_eigensolve + 1;
-		// int nblk = 64;
+		// int nblk = (global_num_cols - 1) / sqrt_nprocs_for_eigensolve + 1;
+		int nblk = 64;
 
 		// set up descriptor
 		int desc[9];
@@ -228,9 +240,44 @@ int main(int argc, char** argv) {
 		// }
 		// MPI_Barrier(MPI_COMM_WORLD);
 
+		// elpa_generalized_solver(
+		// 	double *a, int desca[9], double *b, int descb[9],
+		// 	int nev, double *ev, double *z, MPI_Comm comm);
+		
+		// create a copy of H and M, ELPA seems to change both H and M within the solver!
+		double *A, *B;
+		A = calloc(max(req_nrow * req_ncol,1),sizeof(double));
+		B = calloc(max(req_nrow * req_ncol,1),sizeof(double));
+		assert(A != NULL && B != NULL);
+		for (int i = 0; i < req_nrow * req_ncol; i++) {
+			A[i] = local_H_s[i];
+			B[i] = local_M_s[i];
+		}
 
-#define SOLVE_FLAG
+		// elpa_generalized_eigenvectors_d(handle, local_H_s, local_M_s, eigvals, eigenvectors, 0, &ierr);
+		const int nev = global_num_cols;
+		double* eigvec = malloc(max(req_nrow * req_ncol,1) * sizeof(double));
+		double* lambda = calloc(global_num_cols,sizeof(double));
+		assert(eigvec != NULL && lambda != NULL);
+
+		double t1, t2;
+		// type: 0 - standard eigenproblem, 1 - generalized eigenproblem
+		if (type == 1) {
+			t1 = MPI_Wtime();
+			elpa_generalized_solver(
+				A, descH, B, descM, nev, lambda, eigvec, MPI_COMM_WORLD);
+			t2 = MPI_Wtime();
+			if (rank == 0) printf("Time for ELPA generalized eigensolver: %.3f ms\n", (t2-t1)*1e3);
+		} else if (type == 0) {
+			t1 = MPI_Wtime();
+			elpa_std_solver(
+				A, descH, nev, lambda, eigvec, MPI_COMM_WORLD);
+			t2 = MPI_Wtime();
+			if (rank == 0) printf("Time for ELPA standard eigensolver: %.3f ms\n", (t2-t1)*1e3);
+		}
+// #define SOLVE_FLAG
 #ifdef SOLVE_FLAG
+{
 		elpa_t handle;
 		const int na = global_num_cols;
 		const int nev = global_num_cols;
@@ -383,11 +430,22 @@ int main(int argc, char** argv) {
 		// 	MPI_Barrier(MPI_COMM_WORLD);
 		// }
 		
+		double err_eigval = 0.0;
+		for (int i = 0; i < nev; i++) {
+			err_eigval = min(err_eigval, fabs(lambda[i] - eigvals[i]));
+		}
+		printf("err_eigval = %.3e\n", err_eigval);
+
 		free(eigenvectors);
 		free(eigvals);
 		elpa_deallocate(handle,&ierr);
 		elpa_uninit(&ierr);
+}
 #endif
+		free(A);
+		free(B);
+		free(eigvec);
+		free(lambda);
 		free(local_H_s);
 		free(local_M_s);
 		free(local_Z_s);
